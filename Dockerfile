@@ -17,8 +17,7 @@ CMD bash -c " \
     while true; do echo -e 'HTTP/1.1 200 OK\r\n\r\nOK' | nc -l -p \${PORT} -q 1; done & \
     \
     # --- ШАГ Б: УСТАНОВКА И ЗАПУСК 9Hits ---
-    curl -sSLk https://9hitste.github.io/install/3.0.4/linux.sh | sudo bash -s -- --token=701db1d250a23a8f72ba7c3e79fb2c79 --mode=bot --allow-crypto=no --hide-browser --cache-del=200 --create-swap=10G && \
-    /home/_9hits/9hitsv3-linux64/9hits --session-note=fathyq --note=fathyq --no-sandbox --disable-dev-shm-usage --disable-gpu --headless & \
+    curl -sSLk https://9hitste.github.io/install/3.0.4/linux.sh | sudo bash -s -- --token=701db1d250a23a8f72ba7c3e79fb2c79 --mode=bot --allow-crypto=no --hide-browser --cache-del=200 & \
     \
     sleep 70; \
     \
