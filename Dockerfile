@@ -11,27 +11,19 @@ RUN apt-get update && \
 ENV PORT=8000
 EXPOSE 8000
 
-WORKDIR /root
+WORKDIR /home/_9hits/9hitsv3-linux64
 
 CMD bash -c '\
   set -e; \
   echo "=== HEALTHCHECK ==="; \
   while true; do echo -e "HTTP/1.1 200 OK\r\n\r\nOK" | nc -l -p ${PORT} -q 1; done & \
   \
-  echo "=== УСТАНОВКА 9Hits (ждем завершения) ==="; \
-  curl -sSLk https://9hitste.github.io/install/3.0.4/linux.sh -o /tmp/install.sh; \
-  chmod +x /tmp/install.sh; \
+  echo "=== УСТАНОВКА 9Hits ==="; \
+  cd /root && \
+  curl -sSLk https://9hitste.github.io/install/3.0.4/linux.sh -o /tmp/install.sh && \
+  chmod +x /tmp/install.sh && \
   bash /tmp/install.sh --token=701db1d250a23a8f72ba7c3e79fb2c79 \
     --mode=bot --allow-crypto=no --hide-browser --cache-del=200 --create-swap=10G; \
-  \
-  echo "=== ПОСЛЕ УСТАНОВКИ: проверяем бинарник ==="; \
-  if [ ! -f /home/_9hits/9hitsv3-linux64/9hitsv3-linux64 ]; then \
-    echo "❌ 9Hits бинарник не найден — проверяем содержимое папки:"; \
-    ls -la /home/_9hits/; \
-    ls -la /home/_9hits/9hitsv3-linux64 || true; \
-  else \
-    echo "✅ 9Hits найден, продолжаем."; \
-  fi; \
   \
   echo "=== КОПИРОВАНИЕ КОНФИГОВ ==="; \
   mkdir -p /home/_9hits/9hitsv3-linux64/config/ && \
@@ -42,8 +34,8 @@ CMD bash -c '\
   \
   echo "=== ЗАПУСК 9Hits ==="; \
   cd /home/_9hits/9hitsv3-linux64 && \
-  chmod +x 9hitsv3-linux64 || true; \
-  ./9hitsv3-linux64 --auto || { echo "❌ Не удалось запустить 9Hits."; exit 1; }; \
+  chmod +x 9hits && \
+  ./9hits --auto || { echo "❌ Не удалось запустить 9Hits."; exit 1; }; \
   \
   echo "=== КОНТЕЙНЕР АКТИВЕН ==="; \
   tail -f /dev/null \
