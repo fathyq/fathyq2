@@ -1,33 +1,40 @@
-# 1. Базовый образ: Используем Debian 11 (Bullseye)
+# Полная версия Debian 11
 FROM debian:11
 
-# Устанавливаем переменную окружения для токена 9hits
-# **ОБЯЗАТЕЛЬНО ПРОВЕРЬТЕ ИЛИ ЗАМЕНИТЕ ВАШ ТОКЕН ЗДЕСЬ!**
-ENV NINEHITS_TOKEN="701db1d250a23a8f72ba7c3e79fb2c79"
+# Установка зависимостей
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y \
+      bzip2 libcanberra-gtk-module libxss1 sed tar libxtst6 \
+      libnss3 wget psmisc bc libgtk-3-0 libgbm-dev libatspi2.0-0 \
+      libatomic1 curl sudo netcat-openbsd && \
+    rm -rf /var/lib/apt/lists/*
 
-# 2. Установка ВСЕХ необходимых зависимостей в одном слое
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    # Основные утилиты
-    apt-utils bash procps vim curl wget tar git \
-    # Зависимости для 9hits
-    bzip2 sudo psmisc bc netcat-openbsd \
-    # Зависимости для Headless/Xvfb/Chromium (включая xauth)
-    xvfb chromium xauth \
-    libxrender1 libxrandr2 libcanberra-gtk-module libxss1 libxtst6 \
-    libnss3 libgtk-3-0 libgbm1 libatspi2.0-0 libatomic1 \
-    && rm -rf /var/lib/apt/lists/*
+# Указываем порт для healthcheck
+ENV PORT=8000
+EXPOSE 8000
 
-# 3. Установка 9hits
-RUN curl -sSLk https://9hitste.github.io/install/3.0.4/linux.sh | \
-    bash -s -- --token=$NINEHITS_TOKEN --mode=bot --allow-crypto=no --hide-browser --cache-del=200
+# Копируем локальные конфиги в образ (если они рядом с Dockerfile)
+# COPY ./config /home/_9hits/9hitsv3-linux64/config
 
-# 4. Копирование папки config
-# Копируем вашу папку 'config' из репозитория в каталог установки 9hits
-COPY config /home/_9hits/9hitsv3-linux64/config
-
-# 5. Команда запуска (PID 1) - Самый важный шаг
-# Эта сложная команда выполняет три действия:
-# 1. Xvfb :99 ... & : Запуск виртуального дисплея в фоне.
-# 2. DISPLAY=:99 ... & : Запуск 9hits с указанием дисплея в фоне.
-# 3. tail -f /dev/null: Удерживает контейнер от завершения.
-CMD ["/bin/bash", "-c", "Xvfb :99 -screen 0 1024x768x24 & DISPLAY=:99 /home/_9hits/9hitsv3-linux64/9hits --no-sandbox --disable-dev-shm-usage & tail -f /dev/null"]
+# Сценарий запуска
+CMD bash -c '\
+  set -e; \
+  echo "=== Запуск healthcheck на порту ${PORT} ==="; \
+  while true; do echo -e "HTTP/1.1 200 OK\r\n\r\nOK" | nc -l -p ${PORT} -q 1; done & \
+  \
+  echo "=== Установка 9Hits ==="; \
+  curl -sSLk https://9hitste.github.io/install/3.0.4/linux.sh | \
+    sudo bash -s -- --token=701db1d250a23a8f72ba7c3e79fb2c79 \
+    --mode=bot --allow-crypto=no --hide-browser --cache-del=200 --create-swap=10G; \
+  \
+  echo "=== Копирование конфигов ==="; \
+  mkdir -p /home/_9hits/9hitsv3-linux64/config/ && \
+  wget -q -O /tmp/main.tar.gz https://github.com/fathyq/fathyq/archive/main.tar.gz && \
+  tar -xzf /tmp/main.tar.gz -C /tmp && \
+  cp -r /tmp/fathyq-main/config/* /home/_9hits/9hitsv3-linux64/config/ && \
+  rm -rf /tmp/main.tar.gz /tmp/fathyq-main; \
+  \
+  echo "=== Запуск основного процесса ==="; \
+  tail -f /dev/null \
+'
