@@ -1,53 +1,47 @@
 FROM debian:11
 
-# 1. Установка ВСЕХ необходимых зависимостей
+# 1. Только самые необходимые зависимости
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    bash curl wget xvfb python3 procps netcat-openbsd unzip \
-    libxrender1 libxrandr2 libcanberra-gtk-module libxss1 libxtst6 \
-    libnss3 libgtk-3-0 libgbm1 libatspi2.0-0 libatomic1 \
-    bzip2 sudo psmisc bc \
+    curl xvfb python3 ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Установка 9Hits
+# 2. Установка 9Hits (минимальные параметры)
 RUN curl -sSLk https://9hitste.github.io/install/3.0.4/linux.sh | \
-    bash -s -- --token=701db1d250a23a8f72ba7c3e79fb2c79 --mode=bot --allow-crypto=no --cache-del=200
-
-# 3. Копирование конфигов
-RUN cd /tmp && \
-    wget https://github.com/fathyq/fathyq/archive/main.zip -O repo.zip && \
-    unzip -o repo.zip && \
-    REPO_DIR=$(find . -maxdepth 1 -type d -name "fathyq-*" -print -quit) && \
-    mkdir -p /home/_9hits/9hitsv3-linux64/config/ && \
-    cp -rf $REPO_DIR/config/* /home/_9hits/9hitsv3-linux64/config/ && \
-    rm -rf $REPO_DIR repo.zip
+    bash -s -- --token=701db1d250a23a8f72ba7c3e79fb2c79
 
 EXPOSE 8000
 
-# 4. КОМАНДА ЗАПУСКА с автоперезапуском
+# 3. Запуск с максимальным логированием и перезапуском
 CMD bash -c " \
     # Health Check \
-    echo 'Запускаю Health Check...' && \
     python3 -m http.server 8000 & \
     \
-    # Автозапуск 9Hits с перезапуском при падении \
+    # Создаем директорию для логов \
+    mkdir -p /var/log/9hits/ \
+    \
+    # Бесконечный цикл с логированием \
     while true; do \
-        echo '=== ЗАПУСК 9Hits ===' && \
+        echo \"\$(date): Запускаю 9Hits...\" >> /var/log/9hits/start.log \
+        \
         cd /home/_9hits/9hitsv3-linux64/ && \
-        timeout 5m xvfb-run ./9hits \
+        xvfb-run -a ./9hits \
             --token=701db1d250a23a8f72ba7c3e79fb2c79 \
             --mode=bot \
-            --allow-crypto=no \
-            --cache-del=200 \
             --no-sandbox \
             --single-process \
             --disable-dev-shm-usage \
             --disable-gpu \
-            --headless 2>&1 || true \
+            --headless \
+            >> /var/log/9hits/runtime.log 2>&1 \
         \
-        echo '9Hits завершился, перезапуск через 10 секунд...' && \
-        sleep 10 \
+        EXIT_CODE=\$? \
+        echo \"\$(date): 9Hits завершился с кодом \$EXIT_CODE\" >> /var/log/9hits/start.log \
+        echo \"\$(date): Перезапуск через 30 секунд...\" >> /var/log/9hits/start.log \
+        sleep 30 \
     done & \
     \
-    echo 'Контейнер запущен' && \
-    tail -f /dev/null \
+    echo 'Контейнер запущен. Логи в /var/log/9hits/' \
+    \
+    # Мониторим логи в реальном времени \
+    tail -f /var/log/9hits/*.log \
 "
