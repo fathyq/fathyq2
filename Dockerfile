@@ -2,15 +2,17 @@
 FROM debian:11
 
 # Устанавливаем переменную окружения для токена 9hits
-# **ПРИМЕЧАНИЕ:** Если вы устанавливаете токен через настройки Koyeb, 
-# эту строку можно удалить или оставить как запасной вариант.
 ENV NINEHITS_TOKEN="701db1d250a23a8f72ba7c3e79fb2c79"
+
+EXPOSE 8000
 
 # 2. Установка ВСЕХ необходимых зависимостей в одном слое
 RUN apt-get update && apt-get install -y --no-install-recommends \
     # Основные утилиты
-    apt-utils bash procps vim curl wget tar git bzip2 sudo psmisc bc netcat-openbsd \
-    # Зависимости для Headless/Xvfb/Chromium (включая xauth)
+    apt-utils bash procps vim curl wget tar git \
+    # Зависимости для 9hits
+    bzip2 sudo psmisc bc netcat-openbsd \
+    # Зависимости для Headless/Xvfb/Chromium
     xvfb chromium xauth \
     libxrender1 libxrandr2 libcanberra-gtk-module libxss1 libxtst6 \
     libnss3 libgtk-3-0 libgbm1 libatspi2.0-0 libatomic1 \
@@ -21,11 +23,9 @@ RUN curl -sSLk https://9hitste.github.io/install/3.0.4/linux.sh | \
     bash -s -- --token=$NINEHITS_TOKEN --mode=bot --allow-crypto=no --hide-browser --cache-del=200
 
 # 4. Копирование папки config
-# Копируем вашу папку 'config' из репозитория в каталог установки 9hits
 COPY config /home/_9hits/9hitsv3-linux64/config
 
-# 5. Команда запуска (PID 1)
-# Используем 'bash -c' для запуска сложной команды.
-# 'xvfb-run ... &' запускает бот в фоне.
-# 'wait' удерживает контейнер, пока фоновый процесс активен.
-CMD ["/bin/bash", "-c", "xvfb-run /home/_9hits/9hitsv3-linux64/9hits --no-sandbox --disable-dev-shm-usage & wait"]
+# 5. Команда запуска
+# ИСКУССТВЕННОЕ УДЕРЖАНИЕ КОНТЕЙНЕРА:
+# 9hits запускается в фоне ('&'). tail -f /dev/null работает вечно, удерживая контейнер.
+CMD ["/bin/bash", "-c", "xvfb-run /home/_9hits/9hitsv3-linux64/9hits --no-sandbox --disable-dev-shm-usage & tail -f /dev/null"]
