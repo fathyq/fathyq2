@@ -1,31 +1,17 @@
-# 1. Базовый образ: Используем Debian 11 (Bullseye)
 FROM debian:11
 
-# Устанавливаем переменную окружения для токена 9hits
-ENV NINEHITS_TOKEN="701db1d250a23a8f72ba7c3e79fb2c79"
-
-EXPOSE 8000
-
-# 2. Установка ВСЕХ необходимых зависимостей в одном слое
+# Шаг 1: Установка минимальных инструментов + netcat (для Health Check)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    # Основные утилиты
-    apt-utils bash procps vim curl wget tar git \
-    # Зависимости для 9hits
-    bzip2 sudo psmisc bc netcat-openbsd \
-    # Зависимости для Headless/Xvfb/Chromium
-    xvfb chromium xauth \
-    libxrender1 libxrandr2 libcanberra-gtk-module libxss1 libxtst6 \
-    libnss3 libgtk-3-0 libgbm1 libatspi2.0-0 libatomic1 \
+    bash \
+    curl \
+    wget \
+    git \
+    netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
-# 3. Установка 9hits
-RUN curl -sSLk https://9hitste.github.io/install/3.0.4/linux.sh | \
-    bash -s -- --token=$NINEHITS_TOKEN --mode=bot --allow-crypto=no --hide-browser --cache-del=200
+# Указываем Koyeb, какой порт слушать
+EXPOSE 8000
 
-# 4. Копирование папки config
-COPY config /home/_9hits/9hitsv3-linux64/config
-
-# 5. Команда запуска
-# ИСКУССТВЕННОЕ УДЕРЖАНИЕ КОНТЕЙНЕРА:
-# 9hits запускается в фоне ('&'). tail -f /dev/null работает вечно, удерживая контейнер.
-CMD ["/bin/bash", "-c", "xvfb-run /home/_9hits/9hitsv3-linux64/9hits --no-sandbox --disable-dev-shm-usage & tail -f /dev/null"]
+# Шаг 2: Запуск netcat для прохождения Health Check и удержания контейнера
+# netcat слушает порт 8000, проходя проверку, а bash остается доступным для Shell-доступа.
+CMD ["/bin/bash", "-c", "nc -l -p 8000 -k & tail -f /dev/null"]
