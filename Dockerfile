@@ -14,4 +14,4 @@ EXPOSE 8000
 
 # Шаг 2: Запуск netcat для прохождения Health Check и удержания контейнера
 # netcat слушает порт 8000, проходя проверку, а bash остается доступным для Shell-доступа.
-CMD ["/bin/bash", "-c", "nc -l -p 8000 -k & tail -f /dev/null"]
+CMD ["/bin/bash", "-c", "while true; do nc -l -p 8000 -q 1; done & tail -f /dev/null"]
